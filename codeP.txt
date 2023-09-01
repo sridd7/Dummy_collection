@@ -1,0 +1,64 @@
+#Jobs data fetch code
+import base64
+import pandas as pd
+from serpapi import GoogleSearch
+import datetime
+
+def hello_pubsub(event, context):
+    
+    search_terms = ["data analyst", "data scientist", "business analyst","Quality Analyst"]  # Add
+    search_location = "Bangalore"
+    total_pages = 100  # Increase 
+
+    for search_term in search_terms:
+        for num in range(total_pages):
+
+            start = num * 10
+            params = {
+                "api_key": "aa761a4f78870dae40b827c96845f391e170374c25a73142106a3b7bfd9ce1ec", # my api key
+                "device": "desktop",
+                "engine": "google_jobs",
+                "google_domain": "google.com",
+                "q": search_term,
+                "hl": "en",
+                "gl": "us",
+                "location": search_location,
+                "chips": "date_posted:today",
+                "start": start,
+            }
+
+            search = GoogleSearch(params)
+            results = search.get_dict()
+
+            try:
+                if results['error'] == "Google hasn't returned any results for this query.":
+                    break
+            except KeyError:
+                print(f"Getting SerpAPI data for page: {start}")
+            else:
+                continue
+
+            jobs = results['jobs_results']
+            jobs = pd.DataFrame(jobs)
+            jobs = pd.concat([pd.DataFrame(jobs), 
+                            pd.json_normalize(jobs['detected_extensions'])], 
+                            axis=1).drop(labels='detected_extensions', axis=1)
+            jobs['date_time'] = datetime.datetime.utcnow()
+
+           
+            if start == 0:
+                jobs_all = jobs
+            else:
+                jobs_all = pd.concat([jobs_all, jobs])
+
+            jobs_all['search_term'] = search_term
+            jobs_all['search_location'] = search_location
+
+    # Save results to an Excel file
+    excel_filename = "jobs_data.xlsx"
+    jobs_all.to_excel(excel_filename, index=False)
+
+    print(f"Data saved to {excel_filename}")
+
+if __name__ == "__main__":
+    hello_pubsub(None, None) f'Crypto_DATAset-{day}.xlsx', index=False)
